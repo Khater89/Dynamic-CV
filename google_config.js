@@ -15,4 +15,4 @@
  * ملاحظة: OAuth2 لا يعمل من file:// — يحتاج http:// أو https://
  * للاختبار المحلي: python3 -m http.server 8080 ثم افتح localhost:8080
  */
-window.GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com";
+window.GOOGLE_CLIENT_ID = "379238321475-dalev9nivpjp53hf9u1u3rde3f53cqjl.apps.googleusercontent.com";
