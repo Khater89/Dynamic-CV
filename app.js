@@ -29,7 +29,10 @@ function getBranching(tabId){
   return (DATA.branching && DATA.branching[tabId]) ? DATA.branching[tabId] : null;
 }
 function getProfile(){
-  if(mergeMode && activeTabId==='__merged__') return buildMergedModel();
+  if(mergeMode && activeTabId==='__merged__'){
+    // Use snapshotted editable data if available, else build dynamically
+    return DATA.curated?.["__merged__"] || buildMergedModel();
+  }
   const b = getBranching(activeTabId);
   if(b){
     const br = (b.branches||[]).find(x=>x.id===activeBranchId) || (b.branches||[]).find(x=>x.id===b.default) || (b.branches||[])[0];
@@ -38,7 +41,10 @@ function getProfile(){
   return DATA.curated?.[activeTabId] || {};
 }
 function getHighlights(){
-  if(mergeMode && activeTabId==='__merged__') return (buildMergedModel().merged_highlights||[]);
+  if(mergeMode && activeTabId==='__merged__'){
+    // Return empty — merged highlights shown from snapshot only
+    return DATA.auto_bullets?.["__merged__"] || [];
+  }
   const b = getBranching(activeTabId);
   if(b){
     const bid = activeBranchId || b.default;
@@ -390,11 +396,24 @@ function applyMerge(){
   const exitBtn = $("btnExitMerge");
   if(exitBtn) exitBtn.style.display = "inline-flex";
 
-  // Seed manual order once (based on current date sort)
+  // Build model and SNAPSHOT it into DATA so it becomes fully editable
   const model = buildMergedModel();
   if(!mergeExperienceOrder || !mergeExperienceOrder.length){
     mergeExperienceOrder = (model.experience||[]).map(e=>e._key);
   }
+
+  // ── Snapshot: copy merged result into DATA.curated.__merged ──
+  // This makes it independent — edits no longer affect source tabs
+  if(!DATA.curated) DATA.curated = {};
+  DATA.curated["__merged__"] = {
+    summary:    model.summary    || "",
+    experience: JSON.parse(JSON.stringify(model.experience || [])),
+    skills:     JSON.parse(JSON.stringify(model.skills     || [])),
+    certs:      JSON.parse(JSON.stringify(model.certs      || [])),
+    cert_images:JSON.parse(JSON.stringify(model.cert_images|| [])),
+    links:      JSON.parse(JSON.stringify(model.links      || [])),
+    projects:   JSON.parse(JSON.stringify(model.merged_projects || []))
+  };
 
   closeMergeModal();
   renderTabs();
@@ -570,7 +589,7 @@ function renderHighlights(){
 function renderMergeEditor(){
   const card = $("mergeEditCard");
   const list = $("mergeEditList");
-  const btnAuto = $("btnMergeAutoSort");
+  const btnAuto  = $("btnMergeAutoSort");
   const btnReset = $("btnMergeResetDates");
   if(!card || !list) return;
 
@@ -581,16 +600,13 @@ function renderMergeEditor(){
 
   card.style.display = "block";
 
-  const model = buildMergedModel();
+  // ── Use snapshot directly (DATA.curated["__merged__"]) ────────
+  const snapshot = DATA.curated?.["__merged__"];
+  if(!snapshot) return;
+  const exp = snapshot.experience || [];
 
-  // Seed order on first entry to merged mode
-  if(!mergeExperienceOrder || !mergeExperienceOrder.length){
-    mergeExperienceOrder = (model.experience||[]).map(e=>e._key);
-  }
-
-  // Build rows in the current model order
   list.innerHTML = "";
-  (model.experience||[]).forEach((e, i)=>{
+  exp.forEach((e, i)=>{
     const row = document.createElement("div");
     row.className = "mergeExpRow";
 
@@ -600,75 +616,75 @@ function renderMergeEditor(){
       <div class="muted mSub">${escapeHtml(e.location||"")}</div>
     `;
 
+    // Date input — edits snapshot directly
     const input = document.createElement("input");
     input.className = "mergeDateInput";
-    input.value = (mergeDateOverrides?.[e._key] || e.dates || "");
+    input.value = e.dates || "";
     input.placeholder = "e.g., Feb 2023 – Present";
     input.addEventListener("input", ()=>{
-      const v = String(input.value||"").trim();
-      if(v) mergeDateOverrides[e._key] = v;
-      else delete mergeDateOverrides[e._key];
-      // Re-render experience only (keep editor open)
+      e.dates = input.value.trim();
       renderExperience();
     });
 
+    // ↑ ↓ buttons — reorder snapshot array directly
     const btns = document.createElement("div");
     btns.className = "mergeBtns";
+
     const up = document.createElement("button");
     up.className = "mini";
     up.textContent = "↑";
     up.title = "Move up";
-    up.disabled = (i===0);
+    up.disabled = (i === 0);
     up.onclick = ()=>{
-      const idx = mergeExperienceOrder.indexOf(e._key);
-      if(idx>0){
-        const tmp = mergeExperienceOrder[idx-1];
-        mergeExperienceOrder[idx-1] = mergeExperienceOrder[idx];
-        mergeExperienceOrder[idx] = tmp;
-        renderMergeEditor();
-        renderExperience();
-      }
+      const arr = snapshot.experience;
+      [arr[i-1], arr[i]] = [arr[i], arr[i-1]];
+      renderMergeEditor();
+      renderExperience();
     };
+
     const down = document.createElement("button");
     down.className = "mini";
     down.textContent = "↓";
     down.title = "Move down";
-    down.disabled = (i===model.experience.length-1);
+    down.disabled = (i === exp.length - 1);
     down.onclick = ()=>{
-      const idx = mergeExperienceOrder.indexOf(e._key);
-      if(idx>=0 && idx < mergeExperienceOrder.length-1){
-        const tmp = mergeExperienceOrder[idx+1];
-        mergeExperienceOrder[idx+1] = mergeExperienceOrder[idx];
-        mergeExperienceOrder[idx] = tmp;
-        renderMergeEditor();
-        renderExperience();
-      }
+      const arr = snapshot.experience;
+      [arr[i], arr[i+1]] = [arr[i+1], arr[i]];
+      renderMergeEditor();
+      renderExperience();
     };
+
     btns.appendChild(up);
     btns.appendChild(down);
-
     row.appendChild(left);
     row.appendChild(input);
     row.appendChild(btns);
     list.appendChild(row);
   });
 
+  // Auto sort by date
   if(btnAuto){
     btnAuto.onclick = ()=>{
-      // Clear manual order then rebuild order by (possibly edited) dates
-      mergeExperienceOrder = [];
-      const m2 = buildMergedModel();
-      mergeExperienceOrder = (m2.experience||[]).map(e=>e._key);
+      if(!snapshot.experience) return;
+      snapshot.experience.sort((a, b)=>{
+        const ra = parseDateRange(a.dates);
+        const rb = parseDateRange(b.dates);
+        return (rb.end - ra.end) || (rb.start - ra.start);
+      });
       renderMergeEditor();
       renderExperience();
     };
   }
+
+  // Reset — restore from source tabs
   if(btnReset){
     btnReset.onclick = ()=>{
-      mergeDateOverrides = {};
-      // keep manual order, but reset dates to original
-      renderMergeEditor();
-      renderExperience();
+      if(confirm("إعادة بناء الترتيب من التابات الأصلية؟")){
+        const fresh = buildMergedModel();
+        snapshot.experience = JSON.parse(JSON.stringify(fresh.experience || []));
+        renderMergeEditor();
+        renderExperience();
+      }
     };
   }
 }
@@ -730,19 +746,24 @@ function renderProjects(){
   if(mergeMode && activeTabId==='__merged__'){
     const wrap = $("projects");
     if(!card || !wrap) return;
-    const projs = (buildMergedModel().merged_projects)||[];
-    if(!projs.length){ card.style.display="none"; return; }
-    card.style.display="block";
+    const snapshot = DATA.curated?.["__merged__"];
+    const projs = snapshot?.projects || [];
+    // Always show card so user can add projects
+    card.style.display = "block";
     wrap.innerHTML = "";
-    const scored = projs.map(p=>{ const blob=[p.name,p.summary,(p.bullets||[]).join(" "),(p.keywords||[]).join(" ")].join(" "); return {p, jd: scoreText(blob)}; }).sort((a,b)=>b.jd-a.jd);
-    scored.forEach(({p})=>{
-      if(searchTerm){ const blob = norm([p.name,p.summary,(p.bullets||[]).join(" "),(p.keywords||[]).join(" ")].join(" ")); if(!blob.includes(searchTerm)) return; }
-      const box = document.createElement("div");
-      box.className = "item";
-      const link = p.url ? `<div class="muted"><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">Open link</a></div>` : "";
-      box.innerHTML = `<div class="itemTitle">${escapeHtml(p.name||"")}</div><div class="itemMeta">${escapeHtml(p.summary||"")}</div>${link}<ul>${(p.bullets||[]).map(b=>`<li>${escapeHtml(b)}</li>`).join("")}</ul>`;
-      wrap.appendChild(box);
-    });
+    if(!projs.length){
+      wrap.innerHTML = `<div class="muted">لا توجد مشاريع — استخدم ＋ لإضافة مشروع</div>`;
+    } else {
+      projs.forEach((p)=>{
+        if(searchTerm){ const blob = norm([p.name,p.summary,(p.bullets||[]).join(" "),(p.keywords||[]).join(" ")].join(" ")); if(!blob.includes(searchTerm)) return; }
+        const box = document.createElement("div");
+        box.className = "item";
+        box.__cvProject = p;
+        const link = p.url ? `<div class="muted"><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">Open link</a></div>` : "";
+        box.innerHTML = `<div class="itemTitle">${escapeHtml(p.name||"")}</div><div class="itemMeta">${escapeHtml(p.summary||"")}</div>${link}<ul>${(p.bullets||[]).map(b=>`<li>${escapeHtml(b)}</li>`).join("")}</ul>`;
+        wrap.appendChild(box);
+      });
+    }
     return;
   }
 
