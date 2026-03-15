@@ -852,16 +852,14 @@
 
     if (editMode) {
       main.classList.add("cv-edit-mode");
-      if (toggleBtn) { toggleBtn.classList.add("active"); toggleBtn.innerHTML = "✏️ وضع التعديل: مفعّل"; }
+      if (toggleBtn) { toggleBtn.classList.add("active"); toggleBtn.textContent = "✏️ Editing ON"; }
       if (banner)    { banner.classList.add("visible"); }
       attachEditHandlers();
     } else {
       main.classList.remove("cv-edit-mode");
-      if (toggleBtn) { toggleBtn.classList.remove("active"); toggleBtn.innerHTML = "✏️ تعديل الـ CV"; }
+      if (toggleBtn) { toggleBtn.classList.remove("active"); toggleBtn.textContent = "✏️ Edit Mode"; }
       if (banner)    { banner.classList.remove("visible"); }
-      // Remove all add buttons and merge notice
-      document.querySelectorAll(".cv-add-btn, #cvAddExpForm, #mergeEditNotice").forEach(el => el.remove());
-      // Clear editable flags so they can be re-attached next time
+      document.querySelectorAll(".cv-add-btn, #cvAddExpForm, #cvAddProjForm, #mergeEditNotice").forEach(el => el.remove());
       document.querySelectorAll("[data-cv-editable]").forEach(el => delete el.dataset.cvEditable);
     }
   }

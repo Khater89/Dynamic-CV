@@ -292,9 +292,11 @@
 
   // ── Setup guide for missing Client ID ───────────────────────
   function showSetupGuide() {
-    const panel = $("driveSetupGuide");
-    if (panel) {
-      panel.style.display = panel.style.display === "none" ? "block" : "none";
+    toast(`⚙️ أضف Google Client ID في google_config.js — راجع GUIDE.md للتفاصيل`, 6000);
+    // Open guide in new tab if available
+    const readme = document.querySelector('a[href*="GUIDE"]');
+    if (!readme) {
+      window.open("https://github.com", "_blank");
     }
   }
 
@@ -326,11 +328,9 @@
     const signIn  = $("driveSignInBtn");
     const signOut = $("driveSignOutBtn");
     const info    = $("driveDbInfo");
-    const guide   = $("driveSetupGuide");
     if (signIn)  signIn.style.display  = signedIn ? "none"  : "block";
     if (signOut) signOut.style.display = signedIn ? "block" : "none";
     if (info)    info.style.display    = signedIn ? "block" : "none";
-    if (guide)   guide.style.display   = "none";
   }
 
   function setSignInBtn(loading) {

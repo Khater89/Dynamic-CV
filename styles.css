@@ -990,3 +990,177 @@ input:focus {
   margin-right: 6px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ══ PRO ADDITIONS ════════════════════════════════════════════ */
+
+/* Segment tabs (Skills/Certs/Tab) */
+.seg-tabs {
+  display: flex;
+  border: 1.5px solid #eee;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.seg-tabs .side-mgr-tab {
+  flex: 1;
+  padding: 7px 4px;
+  border: none;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #fafafa;
+  color: #888;
+  transition: all .15s;
+}
+.seg-tabs .side-mgr-tab + .side-mgr-tab { border-left: 1px solid #eee; }
+.seg-tabs .side-mgr-tab.active { background: #fff5f5; color: #c0392b; }
+
+/* Drop zone */
+.drop-zone {
+  border: 2px dashed #ddd;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 12px;
+  color: #aaa;
+  transition: all .15s;
+}
+.drop-zone:hover { border-color: #c0392b; background: #fff5f5; color: #c0392b; }
+
+/* Status hints */
+.status-hint { font-size: 11px; color: #888; margin-top: 4px; min-height: 16px; }
+
+/* Tool buttons in sidebar */
+.tool-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1.5px solid #eee;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.tool-btn:hover { border-color: #1a1a2e; color: #1a1a2e; }
+.tool-btn.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+.tool-btn-accent { border-color: rgba(192,57,43,.4); color: #c0392b; }
+.tool-btn-accent:hover { background: #c0392b; color: #fff; border-color: #c0392b; }
+
+/* AI Builder button */
+.btn-ai {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #1a1a2e, #2d2d50);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.btn-ai:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+
+/* Add (+) button */
+.btn-add {
+  padding: 8px 12px;
+  border-radius: 9px;
+  border: none;
+  background: #c0392b;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Full-width primary */
+.btn-primary-full {
+  width: 100%;
+  padding: 9px;
+  border-radius: 9px;
+  border: none;
+  background: #c0392b;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Google sign-in */
+.btn-google {
+  width: 100%;
+  padding: 9px;
+  border-radius: 10px;
+  border: 1.5px solid #4285F4;
+  background: #fff;
+  color: #4285F4;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.btn-google:hover { background: #f0f4ff; }
+
+/* Drive save button */
+.btn-save-drive {
+  flex: 1;
+  padding: 7px;
+  border-radius: 9px;
+  border: 1.5px solid #10b981;
+  background: #ecfdf5;
+  color: #059669;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-ghost-sm {
+  padding: 7px 10px;
+  border-radius: 9px;
+  border: 1.5px solid #eee;
+  background: #fff;
+  color: #aaa;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* sidebar inputs */
+.sidebar input:not([type=month]):not([type=file]) {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid #eee;
+  border-radius: 9px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color .15s;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.sidebar input:focus { border-color: #c0392b; }
+input[type=month] {
+  padding: 7px 9px;
+  border: 1.5px solid #eee;
+  border-radius: 9px;
+  font-size: 12px;
+  outline: none;
+}
+
+/* Edit mode banner */
+#cvEditBanner {
+  background: linear-gradient(135deg, #fff5f5, #fff);
+  border-bottom: 2px solid rgba(192,57,43,.15);
+  padding: 8px 20px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #c0392b;
+  display: none;
+  align-items: center;
+  gap: 8px;
+}
+#cvEditBanner.visible { display: flex; }
