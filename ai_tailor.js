@@ -36,34 +36,45 @@
   function buildCVContext() {
     if (typeof CV_DATA === "undefined") return "No CV data available.";
     const d = CV_DATA, p = d.person || {};
-    let ctx = `CANDIDATE: ${p.name || "Abdelrahman Khater"} | ${p.location || "Amman, Jordan"}\n\n`;
+    let ctx = `CANDIDATE: ${p.name || "Abdelrahman Khater"}\n`;
+    ctx += `Location: ${p.location || "Amman, Jordan"}\n`;
+    if (p.email) ctx += `Email: ${p.email}\n`;
+    if (p.phone) ctx += `Phone: ${p.phone}\n\n`;
 
-    // Active tab first (most relevant), then others briefly
     const app    = window.__cvApp;
     const active = app?.getActiveTab() || "";
-    const tabs   = Object.keys(d.curated || {});
-    const order  = [active, ...tabs.filter(t => t !== active && t !== "__merged__")];
+    const tabs   = Object.keys(d.curated || {}).filter(t => t !== "__merged__");
+    const order  = [active, ...tabs.filter(t => t !== active)];
 
-    for (const tid of order.slice(0, 4)) { // max 4 tabs
+    for (const tid of order.slice(0, 5)) {
       const tab = d.curated[tid];
       if (!tab) continue;
-      ctx += `=== ${tid.toUpperCase()} ===\n`;
-      if (tab.summary) ctx += `Summary: ${tab.summary.slice(0, 200)}\n`;
-      (tab.experience || []).slice(0, 3).forEach(e => {
-        ctx += `• ${e.title} @ ${e.company} (${e.dates})\n`;
-        (e.bullets || []).slice(0, 3).forEach(b => ctx += `  - ${b.slice(0, 120)}\n`);
+      ctx += `\n=== ${tid.toUpperCase()} ===\n`;
+      if (tab.summary) ctx += `Summary: ${tab.summary}\n\n`;
+      (tab.experience || []).forEach(e => {
+        ctx += `Position: ${e.title} at ${e.company}, ${e.location} | ${e.dates}\n`;
+        (e.bullets || []).forEach(b => ctx += `  • ${b}\n`);
+        ctx += "\n";
       });
       if ((tab.skills || []).length)
-        ctx += `Skills: ${tab.skills.slice(0, 12).join(", ")}\n`;
-      ctx += "\n";
+        ctx += `Skills: ${tab.skills.join(", ")}\n`;
+      if ((tab.certs || []).length) {
+        ctx += `Certifications:\n`;
+        tab.certs.forEach(c => ctx += `  • ${c.title || c.name}${c.issuer ? " — " + c.issuer : ""}${c.date ? " (" + c.date + ")" : ""}\n`);
+      }
     }
 
-    (d.education || []).slice(0, 2).forEach(e =>
-      ctx += `Education: ${e.degree || e.title} — ${e.institution || e.school}\n`
-    );
-    (d.projects || []).slice(0, 3).forEach(proj =>
-      ctx += `Project: ${proj.title}: ${(proj.description || "").slice(0, 100)}\n`
-    );
+    if ((d.education || []).length) {
+      ctx += `\n=== EDUCATION ===\n`;
+      d.education.forEach(e => ctx += `• ${e.degree || e.title} — ${e.institution || e.school} (${e.year || e.dates || ""})\n`);
+    }
+
+    if ((d.projects || []).length) {
+      ctx += `\n=== PROJECTS ===\n`;
+      d.projects.slice(0, 5).forEach(proj =>
+        ctx += `• ${proj.title}: ${(proj.description || proj.summary || "").slice(0, 200)}\n`
+      );
+    }
 
     return ctx;
   }
@@ -71,27 +82,107 @@
   // ── ATS-optimized system prompt ────────────────────────────
   const SYSTEM_PROMPT = `You are an expert CV writer. Create ATS-optimized tailored CVs. Always return exactly: ---ANALYSIS--- then ---DATA--- then ---CV---`
 
-  // ── Build prompt (concise for Gemini) ──────────────────────
+  // ── Build prompt ──────────────────────────────────────────────
   function buildGeneratePrompt(jd, cvCtx) {
-    return `Analyze this job description and create a tailored ATS-optimized CV.
+    return `You are a senior HR consultant and expert CV writer with 15+ years experience.
+Your task: analyze the job description deeply, extract ALL requirements, then craft a highly tailored ATS-optimized CV.
 
-JOB DESCRIPTION:
+═══ JOB DESCRIPTION ═══
 ${jd}
 
-CANDIDATE CV DATA:
+═══ CANDIDATE CV DATA ═══
 ${cvCtx}
 
-Return EXACTLY these 3 sections in order:
+═══ INSTRUCTIONS ═══
+Step 1: Deep analysis — identify:
+- Required technical skills (hard skills)
+- Soft skills and behavioral requirements  
+- Years of experience needed
+- Industry-specific keywords that ATS will scan for
+- Nice-to-have qualifications
+- Seniority level
+
+Step 2: Match analysis — for each JD requirement, find the BEST matching experience/skill from the CV data
+
+Step 3: Generate output in EXACTLY this format:
 
 ---ANALYSIS---
-(Arabic) 🎯 المتطلبات: bullet list | ✅ المتوفر: matches | ⭐ نسبة التطابق: X% | 💡 نصائح: 2 tips
+🎯 المتطلبات الرئيسية:
+• [list each key requirement]
+
+✅ ما يتوفر عند المرشح:
+• [specific matching items with evidence]
+
+⚠️ الفجوات:
+• [missing skills or experience gaps]
+
+⭐ نسبة التطابق: [X]%
+
+💡 نصائح للتقديم:
+• [3 specific actionable tips]
 
 ---DATA---
-{"tab":"electrical|network|data|pm","headline":"job title","summary":"3 sentences with JD keywords","experience":[{"title":"","company":"","location":"","dates":"","bullets":["action verb + JD keyword"]}],"skills":["skill1","skill2"]}
-(max 3 experience entries, 10 skills, plain strings only)
+{
+  "tab": "electrical|network|data|pm",
+  "headline": "exact job title from JD",
+  "summary": "4-5 sentences: opens with years of experience + specialization, includes 3+ JD keywords, quantifies impact, ends with value proposition",
+  "experience": [
+    {
+      "title": "exact title from CV",
+      "company": "exact company from CV",
+      "location": "location",
+      "dates": "dates",
+      "bullets": [
+        "Strong action verb + specific achievement + quantified result + JD keyword",
+        "Another achievement rewritten to mirror JD language exactly"
+      ]
+    }
+  ],
+  "skills": ["skill matching JD exactly as written in JD"]
+}
+Rules for DATA:
+- tab: electrical=power/solar/QC/cables, network=NOC/Cisco/LAN/WAN, data=Python/SQL/ETL/cloud, pm=coordination/logistics
+- Select the 3-4 MOST relevant experience entries only
+- Every bullet: action verb + achievement + number/% + JD keyword
+- Skills: exact strings, top 15 most relevant to JD, no duplicates
 
 ---CV---
-Complete professional CV HTML (inline styles, single column, Arial font, white bg, #1a1a2e headings, #c0392b accents). Include: name, summary, experience, skills, education. No placeholders.`;
+Write a COMPLETE, PROFESSIONAL, ATS-OPTIMIZED CV in clean HTML.
+
+HTML Requirements:
+- Inline styles ONLY (no <style> tags, no classes)
+- Single column layout — NO multi-column, NO tables for layout
+- font-family: Arial, Helvetica, sans-serif throughout
+- background: #ffffff
+- max-width: 800px, margin: 0 auto, padding: 40px
+
+Header section:
+- Name: font-size:26px; font-weight:900; color:#1a1a2e; margin:0
+- Job title (tailored to JD): font-size:14px; color:#c0392b; font-weight:700; margin:4px 0
+- Contact info: font-size:12px; color:#555; margin:4px 0
+
+Section headings:
+- font-size:11px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:#1a1a2e
+- border-bottom:2px solid #c0392b; padding-bottom:4px; margin:20px 0 10px
+
+Experience entries:
+- Job title: font-size:13px; font-weight:700; color:#1a1a2e
+- Company + dates: font-size:12px; color:#555
+- Bullets: <ul style="margin:6px 0 0 16px;padding:0"> <li style="font-size:12px;color:#333;line-height:1.7;margin-bottom:3px">
+
+Sections to include (in this order):
+1. Professional Summary (3-4 sentences with JD keywords)
+2. Work Experience (chronological, most recent first)
+3. Core Skills (comma-separated or chips style)
+4. Certifications & Training
+5. Education
+
+Content rules:
+- Every bullet point starts with a STRONG action verb (Led, Developed, Reduced, Managed, Implemented...)
+- Include at least 5 keywords from the JD
+- Quantify EVERY achievement (percentages, numbers, team sizes, timeframes)
+- NO placeholder text, NO [brackets], NO generic statements
+- Make it complete and ready to submit`;
   }
 
   // ── Build chat refinement prompt ────────────────────────────
@@ -117,7 +208,7 @@ Also return brief confirmation:
   }
 
   // ── Gemini 2.0 Flash API ──────────────────────────────────────
-  const GEMINI_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash"];
+  const GEMINI_MODELS = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"];
   const GEMINI_BASE   = "https://generativelanguage.googleapis.com/v1/models";
 
   function buildGeminiParts(messages, systemPrompt) {
